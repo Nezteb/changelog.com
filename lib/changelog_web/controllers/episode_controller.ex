@@ -3,6 +3,7 @@ defmodule ChangelogWeb.EpisodeController do
 
   alias Changelog.{Episode, NewsItem, Podcast, Subscription}
   alias ChangelogWeb.Plug.ResponseCache
+  alias ChangelogWeb.{LiveView, TimeView}
 
   plug ResponseCache
   plug :assign_podcast
@@ -132,6 +133,42 @@ defmodule ChangelogWeb.EpisodeController do
     |> assign(:episode, episode)
     |> ResponseCache.cache_public(:infinity)
     |> render(:transcript, layout: false)
+  end
+
+  def chapters(conn, params = %{"slug" => slug}, podcast) do
+    episode =
+      assoc(podcast, :episodes)
+      |> Episode.published()
+      |> Repo.get_by!(slug: slug)
+
+    chapters = if Map.has_key?(params, "pp") do
+      episode.plusplus_chapters
+    else
+      episode.audio_chapters
+    end
+
+    conn
+    |> assign(:chapters, chapters)
+    |> render("chapters.json")
+  end
+
+  def live(conn, %{"slug" => slug}, podcast) do
+    episode =
+      assoc(podcast, :episodes)
+      |> Episode.recorded_live()
+      |> Episode.with_youtube_id()
+      |> Repo.get_by!(slug: slug)
+
+    redirect(conn, external: LiveView.youtube_url(episode))
+  end
+
+  def time(conn, %{"slug" => slug}, podcast) do
+    episode =
+      assoc(podcast, :episodes)
+      |> Episode.recorded_live_at_known_time()
+      |> Repo.get_by!(slug: slug)
+
+    redirect(conn, external: TimeView.time_is_url(episode.recorded_at))
   end
 
   def subscribe(conn = %{method: "POST", assigns: %{current_user: me}}, %{"slug" => slug}, podcast) do

@@ -74,9 +74,11 @@ defmodule ChangelogWeb.Endpoint do
     parsers: [:urlencoded, :multipart, :json],
     pass: ["*/*"],
     json_decoder: Phoenix.json_library(),
-    length: 256_000_000
+    length: 512_000_000
 
+  # This must come after Plug.Parsers according to Sentry's docs
   plug Sentry.PlugContext
+
   plug Plug.MethodOverride
   plug Plug.Head
 

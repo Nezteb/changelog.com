@@ -1,4 +1,4 @@
-# changelog.com [![CircleCI](https://circleci.com/gh/thechangelog/changelog.com/tree/master.svg?style=shield)](https://circleci.com/gh/thechangelog/changelog.com/tree/master) [![All Contributors](https://img.shields.io/badge/all_contributors-31-orange.svg?style=flat-square)](#contributors) [![Coverage Status](https://coveralls.io/repos/github/thechangelog/changelog.com/badge.svg?branch=master)](https://coveralls.io/github/thechangelog/changelog.com?branch=master)
+# changelog.com [![All Contributors](https://img.shields.io/badge/all_contributors-31-orange.svg?style=flat-square)](#contributors)
 
 [Read the announcement post!](https://changelog.com/posts/changelog-is-open-source)
 
@@ -8,7 +8,7 @@ This is the CMS behind [changelog.com](https://changelog.com). It's an [Elixir](
 
 ## Dependencies
 
-- Elixir 1.12
+- Elixir 1.13
 - Erlang/OTP 24
 
 ## Why is it open source?
@@ -68,6 +68,15 @@ changelog_app_1    | Webpack is watching the files…
 You can now access a dev copy of changelog.com locally, at `http://localhost:4000` or at `https://localhost:4001` if you
 would like to access the HTTPS version.
 
+If you are using Google Chrome as your browser and notice `ERR_CERT_AUTHORITY_INVALID` errors in your console, you will need to enable Chrome's `allow-insecure-localhost` flag, which you can do by opening `chrome://flags/#allow-insecure-localhost`. There will be a log in your terminal warning about this, but it quickly gets hidden by other logs:
+
+```
+dev_docker-changelog_app-1  | * creating priv/cert/selfsigned_key.pem
+...
+dev_docker-changelog_app-1  | NOTE: when using Google Chrome, open chrome://flags/#allow-insecure-localhost
+dev_docker-changelog_app-1  | to enable the use of self-signed certificates on `localhost`.
+```
+
 When you want to stop all Docker containers, press both `CTRL` and `c` keys at the same time (`Ctrl+C`).
 
 Please remember that we have a product roadmap in mind so [open an issue](https://github.com/thechangelog/changelog.com/issues) about the feature you'd like to contribute before putting the time in to code it up. We'd hate for you to waste _any_ of your time building something that may ultimately fall on the cutting room floor.
@@ -93,41 +102,49 @@ Finally, stop the db container by pressing both `CTRL` and `c` keys and the same
 
 You can now start the app normally, all changelog.com content at the time the db backup was taken will be available locally.
 
-### How do I get a local copy of all assets?
+### How to upgrade Elixir?
 
-Run `make rsync-image-uploads-to-local` in your terminal. There is even `make rsync-all-uploads-to-local` 😲
+1. Pick an image from [hexpm/elixir](https://hub.docker.com/r/hexpm/elixir/tags?page=1&ordering=last_updated&name=ubuntu-jammy)
+1. Update `docker/Dockerfile.runtime` to use an image from the URL above
+1. Run `make runtime-image` to publish the new container image
+1. Update `docker/Dockerfile.production` to the exact runtime version that was published in the previous step
+1. Update `2021/dagger/prod_image/main.cue` to the exact runtime version used above
+1. Update `dev_docker/changelog.yml` to the exact runtime version used above
+1. Update the Elixir version in `README.md` & `mix.exs`
+1. Commit and push everything, then wait for the pipeline to deploy everything into production
 
-### Why is Docker for Mac slow?
+You may want to test everything locally by running `make ship-it` from within the `2021` dir. This makes it easy to debug any potential issues locally.
 
-If you are running changelog.com locally via `docker-compose up` on a Mac, you might notice that pages take ~1.5s to load:
+### How to build a new container image using Docker Engine running on Fly.io?
 
+Ensure that you have a [Fly.io Wireguard Tunnel configured locally](https://fly.io/docs/reference/private-networking/#creating-your-tunnel-configuration).
+You may also need to [install `flyctl`](https://fly.io/docs/hands-on/install-flyctl/).
+
+Given an active Fly.io Wireguard tunnel:
+
+1. Check that the Wireguard tunnel works:
 ```
-while true
-do
-  curl --silent --output /dev/null \
-  --write-out '%{http_code} connect:%{time_connect} prepare:%{time_pretransfer} transfer:%{time_starttransfer} total:%{time_total}\n' \
-  http://localhost:4000/
-done
-200 connect:0.004815 prepare:0.004849 transfer:1.488685 total:1.488921
-200 connect:0.005061 prepare:0.005089 transfer:1.627873 total:1.628171
-200 connect:0.005176 prepare:0.005211 transfer:1.566022 total:1.566123
-^C
+dig +noall +answer _apps.internal txt
+_apps.internal.		5	IN	TXT	"changelog-2022-03-13,docker-2022-06-13,old-flower-9005,postgres-2022-03-12"
+```
+1. Configure `docker` CLI to use Docker Engine running on Fly.io:
+```
+export DOCKER_HOST=tcp://[fdaa:0:4556:a7b:21e0:1:1f9d:2]:2375
+```
+1. Check that `docker` CLI can connect to the remote Docker Engine:
+```
+docker info
+...
+Server:
+ Containers: 1
+  Running: 1
+  Paused: 0
+  Stopped: 0
+ Server Version: 20.10.17
+...
 ```
 
-This is down to [Docker for Mac networking integration with the OS](https://github.com/docker/for-mac/issues/2814), which is still the case in [18.09.0-ce-beta1](https://github.com/docker/docker-ce/releases/tag/v18.09.0-ce-beta1).
-
-The same test on Arch Linux 2018.10.1 running Docker 18.06.1-ce results in ~0.08s response times (20x faster):
-
-```
-200 connect:0.000569 prepare:0.000602 transfer:0.080425 total:0.080501
-200 connect:0.000614 prepare:0.000650 transfer:0.083291 total:0.083407
-200 connect:0.000611 prepare:0.000643 transfer:0.081731 total:0.081853
-^C
-```
-
-Our thinking is: [make it work first, make it right next &amp; make it fast last](http://wiki.c2.com/?MakeItWorkMakeItRightMakeItFast).
-Contributions to make changelog.com dev on Docker for Mac fast are welcome!
-It would be especially interesting to know if [ipvlan on macOS](https://github.com/docker/cli/blob/master/experimental/vlan-networks.md) makes things better.
+Any `docker` commands will now run against this remote Docker Engine now, including `make runtime-image`.
 
 ## Code of Conduct
 
@@ -145,7 +162,7 @@ Thanks goes to these wonderful people ([emoji key](https://github.com/kentcdodds
     <td align="center"><a href="https://jerodsanto.net"><img src="https://avatars3.githubusercontent.com/u/8212?v=3?s=100" width="100px;" alt=""/><br /><sub><b>Jerod Santo</b></sub></a><br /><a href="https://github.com/thechangelog/changelog.com/commits?author=jerodsanto" title="Code">💻</a> <a href="https://github.com/thechangelog/changelog.com/commits?author=jerodsanto" title="Documentation">📖</a> <a href="#infra-jerodsanto" title="Infrastructure (Hosting, Build-Tools, etc)">🚇</a></td>
     <td align="center"><a href="https://changelog.com/"><img src="https://avatars2.githubusercontent.com/u/2933?v=3?s=100" width="100px;" alt=""/><br /><sub><b>Adam Stacoviak</b></sub></a><br /><a href="#design-adamstac" title="Design">🎨</a> <a href="https://github.com/thechangelog/changelog.com/commits?author=adamstac" title="Code">💻</a> <a href="#financial-adamstac" title="Financial">💵</a></td>
     <td align="center"><a href="http://humanshapes.co"><img src="https://avatars0.githubusercontent.com/u/378665?v=3?s=100" width="100px;" alt=""/><br /><sub><b>Cody Peterson</b></sub></a><br /><a href="#design-codyjames" title="Design">🎨</a> <a href="https://github.com/thechangelog/changelog.com/commits?author=codyjames" title="Code">💻</a></td>
-    <td align="center"><a href="http://elevate.co"><img src="https://pbs.twimg.com/profile_images/1053277843176677379/7y-9aoX5_400x400.jpg?s=100" width="100px;" alt=""/><br /><sub><b>Jake Stutzman</b></sub></a><br /><a href="#design-jakestutzman" title="Design">🎨</a></td>
+    <td align="center"><a href="http://elevate.co"><img src="https://pbs.twimg.com/profile_images/1478390251617935370/m37j1lyg_400x400.jpg" width="100px;" alt=""/><br /><sub><b>Jake Stutzman</b></sub></a><br /><a href="#design-jakestutzman" title="Design">🎨</a></td>
     <td align="center"><a href="https://github.com/TuckerCowie"><img src="https://avatars2.githubusercontent.com/u/7838530?v=3?s=100" width="100px;" alt=""/><br /><sub><b>Tucker Cowie</b></sub></a><br /><a href="https://github.com/thechangelog/changelog.com/commits?author=TuckerCowie" title="Code">💻</a></td>
     <td align="center"><a href="https://github.com/gerhard"><img src="https://avatars2.githubusercontent.com/u/3342?v=3?s=100" width="100px;" alt=""/><br /><sub><b>Gerhard Lazu</b></sub></a><br /><a href="#infra-gerhard" title="Infrastructure (Hosting, Build-Tools, etc)">🚇</a> <a href="https://github.com/thechangelog/changelog.com/commits?author=gerhard" title="Code">💻</a></td>
   </tr>
@@ -194,6 +211,7 @@ Thanks goes to these wonderful people ([emoji key](https://github.com/kentcdodds
     <td align="center"><a href="https://github.com/d-m-u"><img src="https://avatars.githubusercontent.com/u/16326669?v=4?s=100" width="100px;" alt=""/><br /><sub><b>d-m-u</b></sub></a><br /><a href="https://github.com/thechangelog/changelog.com/issues?q=author%3Ad-m-u" title="Bug reports">🐛</a></td>
     <td align="center"><a href="http://sorentwo.com"><img src="https://avatars.githubusercontent.com/u/270831?v=4?s=100" width="100px;" alt=""/><br /><sub><b>Parker Selbert</b></sub></a><br /><a href="https://github.com/thechangelog/changelog.com/commits?author=sorentwo" title="Code">💻</a></td>
     <td align="center"><a href="http://hailelagi.com"><img src="https://avatars.githubusercontent.com/u/52631736?v=4?s=100" width="100px;" alt=""/><br /><sub><b>Haile Lagi</b></sub></a><br /><a href="https://github.com/thechangelog/changelog.com/commits?author=hailelagi" title="Code">💻</a></td>
+    <td align="center"><a href="http://nezteb.net"><img src="https://avatars.githubusercontent.com/u/3588798?v=4?s=100" width="100px;" alt=""/><br /><sub><b>Noah</b></sub></a><br /><a href="https://github.com/thechangelog/changelog.com/commits?author=Nezteb" title="Documentation">📖</a></td>
   </tr>
 </table>
 

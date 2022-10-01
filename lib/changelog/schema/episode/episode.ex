@@ -4,8 +4,9 @@ defmodule Changelog.Episode do
   require Logger
 
   alias Changelog.{
-    EpisodeHost,
+    EpisodeChapter,
     EpisodeGuest,
+    EpisodeHost,
     EpisodeRequest,
     EpisodeTopic,
     EpisodeStat,
@@ -19,8 +20,6 @@ defmodule Changelog.Episode do
     Search,
     Transcripts
   }
-
-  alias ChangelogWeb.{TimeView}
 
   defenum(Type, full: 0, bonus: 1, trailer: 2)
 
@@ -50,9 +49,13 @@ defmodule Changelog.Episode do
     field :audio_bytes, :integer
     field :audio_duration, :integer
 
+    embeds_many :audio_chapters, EpisodeChapter, on_replace: :delete
+
     field :plusplus_file, Files.PlusPlus.Type
     field :plusplus_bytes, :integer
     field :plusplus_duration, :integer
+
+    embeds_many :plusplus_chapters, EpisodeChapter, on_replace: :delete
 
     field :download_count, :float
     field :import_count, :float
@@ -104,6 +107,12 @@ defmodule Changelog.Episode do
 
   def recorded_live(query \\ __MODULE__),
     do: from(q in query, where: q.recorded_live == true)
+
+  def recorded_live_at_known_time(query \\ __MODULE__),
+    do: from(q in query, where: q.recorded_live == true, where: not is_nil(q.recorded_at))
+
+  def with_youtube_id(query \\ __MODULE__),
+    do: from(q in query, where: not is_nil(q.youtube_id))
 
   def scheduled(query \\ __MODULE__),
     do: from(q in query, where: q.published, where: q.published_at > ^Timex.now())
@@ -172,30 +181,17 @@ defmodule Changelog.Episode do
     validated.valid? && !is_published(episode)
   end
 
-  def admin_changeset(struct, params \\ %{}) do
+  def admin_changeset(struct, attrs \\ %{}) do
+    attrs = attrs_with_chapters_sorted_by_starts_at(attrs)
+
     struct
-    |> cast(params, [
-      :slug,
-      :title,
-      :subtitle,
-      :published,
-      :featured,
-      :request_id,
-      :highlight,
-      :subhighlight,
-      :summary,
-      :notes,
-      :doc_url,
-      :published_at,
-      :recorded_at,
-      :recorded_live,
-      :youtube_id,
-      :guid,
-      :type
-    ])
-    |> prep_audio_file(params)
-    |> prep_plusplus_file(params)
-    |> cast_attachments(params, [:audio_file, :plusplus_file])
+    |> cast(attrs, ~w(slug title subtitle published featured request_id highlight
+      subhighlight summary notes doc_url published_at recorded_at recorded_live youtube_id guid type)a)
+    |> prep_audio_file(attrs)
+    |> prep_plusplus_file(attrs)
+    |> cast_attachments(attrs, [:audio_file, :plusplus_file])
+    |> cast_embed(:audio_chapters)
+    |> cast_embed(:plusplus_chapters)
     |> validate_required([:slug, :title, :published, :featured])
     |> validate_format(:slug, Regexp.slug(), message: Regexp.slug_message())
     |> validate_published_has_published_at()
@@ -404,11 +400,11 @@ defmodule Changelog.Episode do
   # just-transformed files to store in the changeset, which cannot be
   # accomplished with Waffle at the time of implementation.
   def prep_audio_file(changeset, %{"audio_file" => %Plug.Upload{path: path}}) do
-    Changelog.FFmpeg.tag(path, changeset.data)
+    Changelog.Mp3Kit.tag(path, changeset.data, changeset.data.audio_chapters)
 
     case File.stat(path) do
       {:ok, stats} ->
-        seconds = path |> Changelog.FFmpeg.duration() |> TimeView.seconds()
+        seconds = Changelog.Mp3Kit.get_duration(path)
         change(changeset, audio_bytes: stats.size, audio_duration: seconds)
 
       {:error, _} ->
@@ -418,11 +414,11 @@ defmodule Changelog.Episode do
   def prep_audio_file(changeset, _params), do: changeset
 
   def prep_plusplus_file(changeset, %{"plusplus_file" => %Plug.Upload{path: path}}) do
-    Changelog.FFmpeg.tag(path, changeset.data)
+    Changelog.Mp3Kit.tag(path, changeset.data, changeset.data.plusplus_chapters)
 
     case File.stat(path) do
       {:ok, stats} ->
-        seconds = path |> Changelog.FFmpeg.duration() |> TimeView.seconds()
+        seconds = Changelog.Mp3Kit.get_duration(path)
         change(changeset, plusplus_bytes: stats.size, plusplus_duration: seconds)
 
       {:error, _} ->
@@ -430,6 +426,26 @@ defmodule Changelog.Episode do
     end
   end
   def prep_plusplus_file(changeset, _params), do: changeset
+
+  def attrs_with_chapters_sorted_by_starts_at(attrs) do
+    attrs
+    |> sort_all_by_starts_at("audio_chapters")
+    |> sort_all_by_starts_at("plusplus_chapters")
+  end
+
+  defp sort_all_by_starts_at(attrs, key) do
+    try do
+      Map.update!(attrs, key, fn chapters ->
+        chapters
+        |> Map.values()
+        |> Enum.sort(&(Float.parse(&1["starts_at"]) <= Float.parse(&2["starts_at"])))
+        |> Enum.with_index()
+        |> Map.new(fn {chapter, index} -> {"#{index}", chapter} end)
+      end)
+      rescue
+        KeyError -> attrs
+    end
+  end
 
   defp validate_published_has_published_at(changeset) do
     published = get_field(changeset, :published)

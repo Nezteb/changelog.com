@@ -3,6 +3,7 @@ import Clipboard from "clipboard";
 import SearchWidget from "components/searchWidget";
 import FilterWidget from "components/filterWidget";
 import CalendarField from "components/calendarField";
+import ChaptersWidget from "components/chaptersWidget";
 import Modal from "components/modal";
 import parseTime from "../../shared/parseTime";
 
@@ -121,13 +122,23 @@ export default class EpisodeView {
   }
 
   new() {
-    new SearchWidget("person", "episode", "episode_hosts");
-    new SearchWidget("person", "episode", "episode_guests");
-    new SearchWidget("sponsor", "episode", "episode_sponsors");
-    new SearchWidget("topic", "episode", "episode_topics");
-    new CalendarField(".ui.calendar");
-    new Modal(".js-title-guide-modal", ".title-guide.modal");
-    new Modal(".js-subtitle-guide-modal", ".subtitle-guide.modal");
+    new SearchWidget("person", "episode", "episode_hosts")
+    new SearchWidget("person", "episode", "episode_guests")
+    new SearchWidget("sponsor", "episode", "episode_sponsors")
+    new SearchWidget("topic", "episode", "episode_topics")
+    new CalendarField(".ui.calendar")
+    new Modal(".js-title-guide-modal", ".title-guide.modal")
+    new Modal(".js-subtitle-guide-modal", ".subtitle-guide.modal")
+    new ChaptersWidget("audio", $(".js-episode_sponsors"))
+    new ChaptersWidget("plusplus", [])
+
+    let clipboard = new Clipboard(".clipboard.button")
+
+    clipboard.on("success", function(e) {
+      $(e.trigger).popup({variation: "inverted", content: "Copied!"}).popup("show")
+    })
+
+    clipboard.on("error", function(e) { console.log(e) })
 
     let requestedInput = $("input[name='episode[requested]']")
     let requestSelect = $("select[name='episode[request_id]']")
@@ -153,28 +164,28 @@ export default class EpisodeView {
     })
 
     $("form").on("change", ".js-time-in-seconds", function(event) {
-      let currentTime = $(event.target).val();
-      let newTime = parseTime(currentTime);
+      let currentTime = $(event.target).val()
+      let newTime = parseTime(currentTime)
 
       if (currentTime != newTime) {
-        $(event.target).val(newTime);
+        $(event.target).val(newTime)
       }
     })
   }
 
   edit() {
-    this.new();
+    this.new()
 
-    new Modal(".js-publish-modal", ".publish.modal");
+    new Modal(".js-publish-modal", ".publish.modal")
 
-    let newsInput = $("input[name=news]");
-    let thanksInput = $("input[name=thanks]");
+    let newsInput = $("input[name=news]")
+    let thanksInput = $("input[name=thanks]")
 
     newsInput.on("change", function() {
       if (newsInput.is(":checked")) {
-        thanksInput.closest(".checkbox").checkbox("set enabled");
+        thanksInput.closest(".checkbox").checkbox("set enabled")
       } else {
-        thanksInput.closest(".checkbox").checkbox("set disabled").checkbox("uncheck");
+        thanksInput.closest(".checkbox").checkbox("set disabled").checkbox("uncheck")
       }
     });
   }

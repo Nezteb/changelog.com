@@ -1,4 +1,4 @@
-use Mix.Config
+import Config
 
 static_url_host = System.get_env("STATIC_URL_HOST", "cdn.changelog.com")
 
@@ -67,8 +67,9 @@ config :changelog, Oban,
     {Oban.Plugins.Cron,
      timezone: "US/Central",
      crontab: [
-       {"0 4 * * *", Changelog.ObanWorkers.StatsProcessor},
        {"0 3 * * *", Changelog.ObanWorkers.SlackImporter},
+       {"0 4 * * *", Changelog.ObanWorkers.StatsProcessor},
+       {"0 5 * * *", Changelog.ObanWorkers.NotionUpdater},
        {"* * * * *", Changelog.ObanWorkers.NewsPublisher}
      ]}
   ]

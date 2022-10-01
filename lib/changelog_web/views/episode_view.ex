@@ -66,8 +66,8 @@ defmodule ChangelogWeb.EpisodeView do
   def plusplus_cta(episode = %{episode_sponsors: []}) do
     pp_diff = episode.plusplus_duration - episode.audio_duration
 
-    # 5 second buffer before we consider it bonus
-    if pp_diff > 5 do
+    # we only care if the bonus is a minute or longer
+    if pp_diff > 60 do
       bonus_cta(pp_diff)
     else
       fallback_cta()
@@ -75,16 +75,16 @@ defmodule ChangelogWeb.EpisodeView do
   end
 
   def plusplus_cta(episode) do
-    ads_duration = EpisodeSponsor.duration(episode.episode_sponsors)
     pp_diff = episode.plusplus_duration - episode.audio_duration
-    # There are two cases where we determine plusplus has bonus content:
-    # 1. plusplus is at least 5 seconds longer than public audio
-    # 2. plusplus is shorter than public audio AND shorter than the ads
-    # The first case is obvious, the second case is sneakier.
-    if pp_diff >= 5 || (pp_diff < 5 && abs(pp_diff) < ads_duration) do
-      bonus_cta(pp_diff + ads_duration)
-    else
-      saved_cta(abs(pp_diff))
+    ads_duration = EpisodeSponsor.duration(episode.episode_sponsors)
+    bonus_duration = pp_diff + ads_duration
+
+    cond do
+      # bonus of a minute or longer
+      bonus_duration > 60 -> bonus_cta(bonus_duration)
+      # nothing to talk about if it's less than a minute saved
+      pp_diff < -60 -> saved_cta(abs(pp_diff))
+      true -> fallback_cta()
     end
   end
 
@@ -133,6 +133,10 @@ defmodule ChangelogWeb.EpisodeView do
 
   def guid(episode) do
     episode.guid || "changelog.com/#{episode.podcast_id}/#{episode.id}"
+  end
+
+  def is_changelog_news(episode) do
+    episode.podcast.slug == "podcast" && String.starts_with?(episode.slug, "news")
   end
 
   def is_subtitle_guest_focused(%{subtitle: nil}), do: false
@@ -184,6 +188,10 @@ defmodule ChangelogWeb.EpisodeView do
     [episode.podcast.name, number_with_pound(episode)] |> ListKit.compact_join(" ")
   end
 
+  def published_before_transcripts?(episode) do
+    !is_nil(episode.published_at) && Timex.before?(episode.published_at, ~D[2016-04-20])
+  end
+
   def sponsorships_with_dark_logo(episode) do
     Enum.reject(episode.episode_sponsors, fn s -> is_nil(s.sponsor.dark_logo) end)
   end
@@ -222,6 +230,22 @@ defmodule ChangelogWeb.EpisodeView do
 
   def transcript_repo_url(episode) do
     Github.Source.new("transcripts", episode).repo_url
+  end
+
+  # format: https://github.com/Podcastindex-org/podcast-namespace/blob/main/chapters/jsonChapters.md
+  def render("chapters.json", %{chapters: chapters}) do
+    %{
+      version: "1.2.0",
+      chapters: Enum.map(chapters, fn chapter ->
+        %{
+          title: chapter.title,
+          startTime: chapter.starts_at,
+          endTime: chapter.ends_at,
+          url: chapter.link_url,
+          img: chapter.image_url
+        } |> Map.reject(fn {_k, v} -> is_nil(v) end)
+      end)
+    }
   end
 
   def render("play.json", %{podcast: podcast, episode: episode, prev: prev, next: next}) do

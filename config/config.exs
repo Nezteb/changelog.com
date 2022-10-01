@@ -3,7 +3,7 @@
 #
 # This configuration file is loaded before any dependency and
 # is restricted to this project.
-use Mix.Config
+import Config
 
 config :changelog, ChangelogWeb.Endpoint,
   url: [host: "localhost"],
@@ -12,20 +12,20 @@ config :changelog, ChangelogWeb.Endpoint,
       "SECRET_KEY_BASE",
       "PABstVJCyPEcRByCU8tmSZjv0UfoV+UeBlXNRigy4ba221RzqfN82qwsKvA5bJzi"
     ),
-  render_errors: [accepts: ~w(html json)],
+  render_errors: [view: ChangelogWeb.ErrorView, accepts: ~w(html json), layout: false],
   pubsub_server: Changelog.PubSub
 
 config :changelog,
   buffer_token: SecretOrEnv.get("BUFFER_TOKEN"),
   cm_api_token: Base.encode64("#{SecretOrEnv.get("CM_API_TOKEN")}:x"),
   github_api_token: SecretOrEnv.get("GITHUB_API_TOKEN"),
-  hcaptcha_secret_key: SecretOrEnv.get("HCAPTCHA_SECRET_KEY"),
   hn_user: SecretOrEnv.get("HN_USER"),
   hn_pass: SecretOrEnv.get("HN_PASS"),
   notion_api_token: SecretOrEnv.get("NOTION_API_TOKEN"),
   plusplus_slug: SecretOrEnv.get("PLUSPLUS_SLUG"),
   plusplus_url: "https://changelog.supercast.com",
   recaptcha_secret_key: SecretOrEnv.get("RECAPTCHA_SECRET_KEY"),
+  turnstile_secret_key: SecretOrEnv.get("TURNSTILE_SECRET_KEY"),
   slack_invite_api_token: SecretOrEnv.get("SLACK_INVITE_API_TOKEN"),
   slack_app_api_token: SecretOrEnv.get("SLACK_APP_API_TOKEN"),
   # 60 = one minute, 3600 = one hour, 86,400 = one day, 604,800 = one week, 31,536,000 = one year
@@ -35,7 +35,7 @@ config :changelog,
 
 config :changelog, Oban,
   repo: Changelog.Repo,
-  queues: [comment_notifier: 10, scheduled: 5],
+  queues: [comment_notifier: 10, audio_updater: 10, scheduled: 5],
   plugins: [Oban.Plugins.Pruner, Oban.Plugins.Stager]
 
 config :changelog, Changelog.Mailer, adapter: Bamboo.LocalAdapter
@@ -101,4 +101,4 @@ config :sentry,
 
 # Import environment specific config. This must remain at the bottom
 # of this file so it overrides the configuration defined above.
-import_config "#{Mix.env()}.exs"
+import_config "#{config_env()}.exs"
