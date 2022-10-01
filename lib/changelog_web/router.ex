@@ -143,6 +143,7 @@ defmodule ChangelogWeb.Router do
     pipe_through [:feed]
 
     get "/feed", FeedController, :news
+    get "/topic/:slug/feed", FeedController, :news_by_topic, as: :news
     get "/feed/titles", FeedController, :news_titles
     get "/posts/feed", FeedController, :posts
     get "/sitemap.xml", FeedController, :sitemap

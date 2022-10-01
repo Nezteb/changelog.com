@@ -28,6 +28,15 @@ defmodule ChangelogWeb.FeedController do
     |> ResponseCache.cache_public(cache_duration())
     |> render("news.xml")
   end
+  
+  def news_by_topic(conn, %{"slug" => topic}) do
+    conn
+    |> put_layout(false)
+    |> put_resp_content_type("application/xml")
+    |> assign(:items, NewsItem.latest_news_items_by_topic(topic))
+    |> ResponseCache.cache_public(cache_duration())
+    |> render("news.xml")
+  end
 
   def news_titles(conn, _params) do
     conn

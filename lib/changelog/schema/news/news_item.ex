@@ -596,6 +596,16 @@ defmodule Changelog.NewsItem do
     |> Repo.all()
     |> Enum.map(&load_object/1)
   end
+  
+  def latest_news_items_by_topic(topic) do
+    __MODULE__
+    |> published()
+    |> newest_first()
+    |> preload_all()
+    |> limit(50)
+    |> with_topic(topic)
+    |> Enum.map(&load_object/1)
+  end
 
   def recommend_podcasts(episode = %Episode{}, num_recommendations) do
     recommendation_query = "SELECT * FROM query_related_podcast($1::integer, $2::integer)"

@@ -34,29 +34,30 @@ services:
       GRAFANA_DATASOURCE: "prometheus"
       PROMETHEUS_BEARER_TOKEN_PROM_EX: "super_secret_metrics"
     volumes:
-      - ../assets/admin/:/app/assets/admin:ro
-      - ../assets/app/:/app/assets/app:ro
-      - ../assets/email/:/app/assets/email:ro
-      - ../assets/semantic/:/app/assets/semantic:ro
-      - ../assets/shared/:/app/assets/shared:ro
-      - ../assets/static/:/app/assets/static:ro
-      - ../assets/.babelrc:/app/assets/.babelrc:ro
-      - ../assets/embedder.js:/app/assets/embedder.js:ro
-      - ../assets/package.json:/app/assets/package.json:ro
-      - ../assets/postcss.config.js:/app/assets/postcss.config.js:ro
-      - ../assets/webpack.config.js:/app/assets/webpack.config.js:ro
-      - ../assets/yarn.lock:/app/assets/yarn.lock:ro
+      - ..:/app
+      # - ../assets/admin/:/app/assets/admin:ro
+      # - ../assets/app/:/app/assets/app:ro
+      # - ../assets/email/:/app/assets/email:ro
+      # - ../assets/semantic/:/app/assets/semantic:ro
+      # - ../assets/shared/:/app/assets/shared:ro
+      # - ../assets/static/:/app/assets/static:ro
+      # - ../assets/.babelrc:/app/assets/.babelrc:ro
+      # - ../assets/embedder.js:/app/assets/embedder.js:ro
+      # - ../assets/package.json:/app/assets/package.json:ro
+      # - ../assets/postcss.config.js:/app/assets/postcss.config.js:ro
+      # - ../assets/webpack.config.js:/app/assets/webpack.config.js:ro
+      # - ../assets/yarn.lock:/app/assets/yarn.lock:ro
 
-      - ../config:/app/config:ro
-      - ../lib:/app/lib:ro
+      # - ../config:/app/config:ro
+      # - ../lib:/app/lib:ro
 
-      - ../.formatter.exs:/app/formatter.exs:ro
-      - ../mix.exs:/app/mix.exs:ro
-      - ../mix.lock:/app/mix.lock:ro
+      # - ../.formatter.exs:/app/formatter.exs:ro
+      # - ../mix.exs:/app/mix.exs:ro
+      # - ../mix.lock:/app/mix.lock:ro
 
-      - ../priv/grafana_dashboards:/app/priv/grafana_dashboards:ro
-      - ../priv/repo:/app/priv/repo:ro
-      - ../priv/uploads:/app/priv/uploads:ro
+      # - ../priv/grafana_dashboards:/app/priv/grafana_dashboards:ro
+      # - ../priv/repo:/app/priv/repo:ro
+      # - ../priv/uploads:/app/priv/uploads:ro
 
       - changelog_app_cert:/app/priv/cert
       - changelog_app_static:/app/priv/static
